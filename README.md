@@ -16,13 +16,33 @@ AVE is a self-hosted, rootless-container video transcoding queue with a lightwei
 
 ---
 
+## Quick Start (Interactive Installer)
+
+AVE works with both rootless [Podman](https://podman.io) (recommended) and Docker.
+
+```bash
+git clone https://github.com ~/containers/ave/source
+cd ~/containers/ave/source
+./install.sh
+```
+
+The interactive installer prompts you for:
+1. **Host data path** (defaults to `~/containers/ave`)
+2. **Web GUI port** (defaults to `8488`)
+3. **Local-only vs. LAN access** (with optional session username and password)
+4. **Automatic RAM scratch sizing** (`50%` of host memory) and optional **systemd auto-start on boot** (Linux + Podman)
+
+Once finished, open **`http://127.0.0.1:8488`** in your browser.
+
+---
+
 ## Directory Layout (`~/containers/ave`)
 
 All runtime folders live under `~/containers/ave` on the host (mounted to `/data` inside the container):
 
 ```text
 ~/containers/ave/
-├── source/          # Cloned repository (Containerfile, ave/, entrypoint.py)
+├── source/          # Cloned repository (Containerfile, ave/, entrypoint.py, install.sh)
 ├── watch/           # Drop incoming videos or nested Show/Season folders here
 │   ├── _originals/  # Verified source files archived here after QA passes
 │   └── _failed/     # Corrupt/unreadable files + .error.txt reports
@@ -35,41 +55,23 @@ All runtime folders live under `~/containers/ave` on the host (mounted to `/data
 
 ---
 
-## Quick Start with Podman (Recommended)
+## Manual Setup Options
 
-AVE is designed primarily for rootless [Podman](https://podman.io).
-
-### 1. Clone & Build
+### Podman CLI
 ```bash
-mkdir -p ~/containers/ave/{source,watch,output,config}
-git clone <YOUR_PRIVATE_REPO_URL> ~/containers/ave/source
+mkdir -p ~/containers/ave/{watch,output,config}
 cd ~/containers/ave/source
 podman build -t localhost/ave:latest -f Containerfile .
+
+SHM_GB=\$(awk '/MemTotal/ {g=int(\$2/1024/1024/2); print (g>0?g:2)"g"}' /proc/meminfo)
+podman run -d --name ave \
+  -p 127.0.0.1:8488:8488 \
+  -v ~/containers/ave:/data:Z \
+  --shm-size="\$SHM_GB" \
+  localhost/ave:latest
 ```
 
-### 2. Run with Podman CLI
-* **Local-only (`http://127.0.0.1:8488`):**
-  ```bash
-  SHM_GB=\$(awk '/MemTotal/ {g=int(\$2/1024/1024/2); print (g>0?g:2)"g"}' /proc/meminfo)
-  podman run -d --name ave \
-    -p 127.0.0.1:8488:8488 \
-    -v ~/containers/ave:/data:Z \
-    --shm-size="\$SHM_GB" \
-    localhost/ave:latest
-  ```
-* **LAN-accessible with browser login prompt:**
-  ```bash
-  SHM_GB=\$(awk '/MemTotal/ {g=int(\$2/1024/1024/2); print (g>0?g:2)"g"}' /proc/meminfo)
-  podman run -d --name ave \
-    -p 0.0.0.0:8488:8488 \
-    -e AVE_WEB_USER="ave" \
-    -e AVE_WEB_PASSWORD="your-strong-password" \
-    -v ~/containers/ave:/data:Z \
-    --shm-size="\$SHM_GB" \
-    localhost/ave:latest
-  ```
-
-### 3. Auto-Start on Boot (Podman Quadlet)
+### Podman Quadlet (Systemd Auto-Start)
 ```bash
 mkdir -p ~/.config/containers/systemd
 cp ~/containers/ave/source/ave.container ~/.config/containers/systemd/
@@ -78,19 +80,12 @@ systemctl --user enable --now ave.service
 loginctl enable-linger "\$USER"
 ```
 
----
-
-## Quick Start with Docker / Compose
-
-AVE also runs cleanly under Docker or Compose using the included `compose.yaml`:
-
+### Docker / Podman Compose
 ```bash
-mkdir -p ~/containers/ave/{source,watch,output,config}
-git clone <YOUR_PRIVATE_REPO_URL> ~/containers/ave/source
 cd ~/containers/ave/source
 docker compose up -d --build
+# Or: podman compose up -d --build
 ```
-*(Or `podman compose up -d --build`.)*
 
 ---
 
