@@ -1,0 +1,20 @@
+[Unit]
+Description=AVE — Automatic Video Encoder
+After=network-online.target
+
+[Container]
+Image=localhost/ave:latest
+ContainerName=ave
+AutoUpdate=registry
+PublishPort=127.0.0.1:8488:8488
+Volume=%h/containers/ave:/data:Z
+ShmSize=8g
+MemoryHigh=75%
+MemoryMax=85%
+
+[Service]
+Restart=always
+TimeoutStartSec=120
+
+[Install]
+WantedBy=default.target

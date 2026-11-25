@@ -1,0 +1,20 @@
+# Python bytecode & virtual environments
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# AVE runtime data & backups
+watch/
+output/
+config/
+*.bak
+*.part
+*.error.txt
+
+# OS & editor clutter
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,111 @@
+<div id="live-panel">
+  {% if status.banner_message %}
+  <div class="banner">
+    <span>{{ status.banner_message }}</span>
+    <form method="post" action="/api/banner/dismiss" style="margin:0;">
+      <button type="button" onclick="fetch('/api/banner/dismiss', {method:'POST'}).then(() => this.closest('.banner').remove())">Dismiss</button>
+    </form>
+  </div>
+  {% endif %}
+
+  <div class="telemetry-bar" style="justify-content: space-between; align-items: center;">
+    <div style="display:flex; flex-wrap:wrap; gap:1rem;">
+      <div class="stat">
+        <span class="label">State</span>
+        <div>
+          <strong class="badge state-{{ status.state.value }}">{{ status.state.value | upper }}</strong>
+          {% if status.system_throttled %}<span class="badge" style="background:var(--warn); color:#000;" title="Yielding CPU/IO to host workloads">Courtesy Yield</span>{% endif %}
+        </div>
+      </div>
+      <div class="stat" title="Cumulative active encode time for the current batch (HH:MM:SS)">
+        <span class="label">Batch Time</span>
+        <strong class="mono">{{ batch_timer }}</strong>
+      </div>
+      <div class="stat"><span class="label">CPU</span><strong>{{ telemetry.cpu }}</strong></div>
+      <div class="stat"><span class="label">RAM</span><strong>{{ telemetry.ram }}</strong></div>
+      <div class="stat"><span class="label">Storage</span><strong>{{ telemetry.disk_free }}</strong></div>
+    </div>
+
+    <form method="post" action="/api/originals/clear" onsubmit="return confirm('Permanently delete all archived source files in watch/_originals?')" style="flex-shrink:0;">
+      <button
+        type="submit"
+        class="btn-danger"
+        {% if status.state.value not in ["idle", "stopped"] %}disabled style="opacity:0.45; cursor:not-allowed;" title="Available once active batch finishes"{% else %}title="Reclaim disk space from verified original files"{% endif %}
+      >Clear Originals ({{ reclaimable_gb }} GB)</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem;">
+      <div style="min-width:0; flex:1;">
+        <h3 style="margin-top:0;">Queue & Active Job</h3>
+        <p class="muted" style="word-break:break-word; overflow-wrap:anywhere; margin-bottom:0;">
+          {% if status.current_file %}
+            Encoding: <strong>{{ status.current_file }}</strong>
+          {% else %}
+            Idle — drop videos into <code>watch/</code> and click Start Now.
+          {% endif %}
+        </p>
+      </div>
+      <div class="controls" style="flex-shrink:0;">
+        {% if status.state.value in ["idle", "stopped"] %}
+        <form method="post" action="/api/start">
+          <input type="hidden" name="preset_id" value="{{ cfg.default_preset_id }}">
+          <button type="submit" class="btn-primary">Start Now</button>
+        </form>
+        {% else %}
+        <button type="button" class="btn-warn" onclick="document.getElementById('stop-modal').showModal()">Stop / Pause</button>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if status.current_file %}
+    <div class="progress-wrap">
+      <div class="progress-fill" style="width: {{ status.progress_percent }}%;"></div>
+    </div>
+    <div class="meta-row mono">
+      <span>{{ status.progress_percent }}%</span>
+      <span>Speed: {{ status.fps }} fps ({{ status.speed_multiplier }}x)</span>
+      <span>ETA: {{ file_eta }}</span>
+    </div>
+    {% endif %}
+
+    <div class="counts-row" style="margin-top:0.5rem;">
+      <span>Pending: <strong>{{ pending_files | length }}</strong></span>
+      <span>Completed: <strong>{{ status.completed_count }}</strong></span>
+      <span>Quarantined (_failed): <strong>{{ failed_reports | length }}</strong></span>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-top:0;">Pending Queue ({{ pending_files | length }})</h4>
+      {% if pending_files %}
+      <ul class="file-list scroll-box">
+        {% for f in pending_files %}
+        <li style="word-break:break-word;">{{ f }}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="muted">No files waiting in queue.</p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <h4 style="margin-top:0;">Quarantined (_failed) ({{ failed_reports | length }})</h4>
+      {% if failed_reports %}
+      <ul class="file-list scroll-box">
+        {% for err in failed_reports %}
+        <li>
+          <strong>{{ err.name }}</strong>
+          <a href="{{ err.github_url }}" target="_blank" rel="noopener">Report Issue</a>
+          <pre class="err-box">{{ err.details }}</pre>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="muted">Zero failed files.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>

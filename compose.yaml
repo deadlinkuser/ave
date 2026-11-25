@@ -1,0 +1,20 @@
+services:
+  ave:
+    build:
+      context: .
+      dockerfile: Containerfile
+    container_name: ave
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8488:8488"
+      # To allow LAN access from other devices on your network, switch to:
+      # - "0.0.0.0:8488:8488"
+    volumes:
+      - "${HOME}/containers/ave:/data:Z"
+    shm_size: "8gb"
+    environment:
+      - AVE_DATA_DIR=/data
+      - AVE_PORT=8488
+      # Uncomment below to require a browser login prompt (recommended for LAN access):
+      # - AVE_WEB_USER=ave
+      # - AVE_WEB_PASSWORD=change-me

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ cfg.theme }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AVE — Automatic Video Encoder</title>
+  <script>
+    setInterval(async () => {
+      try {
+        const res = await fetch("/partials/live");
+        if (res.ok) {
+          const panel = document.getElementById("live-panel");
+          if (panel) panel.outerHTML = await res.text();
+        }
+      } catch (e) {}
+    }, 1000);
+  </script>
+  <style>
+    :root {
+      --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --muted: #94a3b8;
+      --border: #334155; --primary: #3b82f6; --warn: #f59e0b; --danger: #ef4444; --ok: #10b981;
+    }
+    [data-theme="light"] {
+      --bg: #f1f5f9; --card: #ffffff; --text: #0f172a; --muted: #475569; --border: #cbd5e1;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+    .container { max-width: 1120px; margin: 0 auto; padding: 1rem; }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .telemetry-bar { display: flex; flex-wrap: wrap; gap: 1rem; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1rem; }
+    .stat { display: flex; flex-direction: column; min-width: 100px; }
+    .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; display: block; margin-bottom: 0.25rem; }
+    .mono { font-family: ui-monospace, monospace; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; }
+    .row-between { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    button, .btn { cursor: pointer; border: 1px solid var(--border); background: var(--card); color: var(--text); padding: 0.45rem 0.85rem; border-radius: 6px; font-size: 0.875rem; text-decoration: none; }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+    .btn-warn { background: var(--warn); border-color: var(--warn); color: #000; font-weight: 600; }
+    .btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+    .badge { padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; background: var(--border); }
+    .state-running { background: var(--ok); color: #000; }
+    .progress-wrap { width: 100%; height: 10px; background: var(--border); border-radius: 999px; overflow: hidden; margin: 0.75rem 0; }
+    .progress-fill { height: 100%; background: var(--primary); transition: width 0.3s ease; }
+    .meta-row, .counts-row { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; font-size: 0.85rem; color: var(--muted); }
+    .file-list { margin: 0.5rem 0 0; padding-left: 1.2rem; font-size: 0.85rem; }
+    .scroll-box { max-height: 230px; overflow-y: auto; padding-right: 0.5rem; }
+    .err-box { background: rgba(239,68,68,0.1); padding: 0.5rem; border-radius: 4px; white-space: pre-wrap; font-size: 0.75rem; }
+    .banner { background: var(--primary); color: #fff; padding: 0.65rem 1rem; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    dialog { background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; max-width: 420px; }
+    input, select { background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 0.4rem; border-radius: 4px; width: 100%; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.75rem; margin-bottom: 0.75rem; }
+    .muted { color: var(--muted); font-size: 0.85rem; }
+    .lang-box { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; max-height: 130px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: 0.35rem; font-size: 0.82rem; }
+    .lang-box label { display: flex; align-items: center; gap: 0.35rem; cursor: pointer; }
+    .lang-box input[type="checkbox"] { width: auto; }
+  </style>
+</head>
+<body id="app-body">
+  <div class="container">
+    <header>
+      <div>
+        <h2 style="margin:0;">AVE — Automatic Video Encoder</h2>
+        <span class="muted">Predictable watch &rarr; output transcoding</span>
+      </div>
+      <form method="post" action="/api/settings">
+        <input type="hidden" name="enable_ram_scratch" value="{{ 'true' if cfg.enable_ram_scratch else '' }}">
+        <input type="hidden" name="thermal_cooldown_sec" value="{{ cfg.thermal_cooldown_sec }}">
+        <input type="hidden" name="write_batch_summaries" value="{{ 'true' if cfg.write_batch_summaries else '' }}">
+        <input type="hidden" name="theme" value="{{ 'light' if cfg.theme == 'dark' else 'dark' }}">
+        <button type="submit">{{ 'Light Mode' if cfg.theme == 'dark' else 'Dark Mode' }}</button>
+      </form>
+    </header>
+
+    {% include "partials/live.html" %}
+"""
+
+p2 = """    <div class="card">
+      <div class="row-between" style="margin-bottom:0.75rem;">
+        <h3 style="margin:0;">Encoding Presets</h3>
+        <div class="row-between">
+          <a href="/api/presets/export" class="btn">Export Presets (.json)</a>
+          <form method="post" action="/api/presets/import" enctype="multipart/form-data" style="display:inline-flex; gap:0.4rem;">
+            <input type="file" name="file" accept=".json,.bak" required style="width:auto;">
+            <button type="submit">Import / Restore</button>
+          </form>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:0.75rem;">
+        <div class="row-between">
+          <select id="preset-selector" onchange="updatePresetBar()" style="max-width:400px; font-weight:600;">
+            {% for p in presets %}
+            <option
+              value="{{ p.id }}"
+              data-builtin="{{ 'true' if p.is_builtin else 'false' }}"
+              data-is-default="{{ 'true' if p.id == cfg.default_preset_id else 'false' }}"
+              data-summary="{{ p.container | upper }} &bull; {{ p.max_height ~ 'p' if p.max_height else 'Original' }} &bull; {{ p.video_codec | upper }} {{ p.bit_depth }}-bit &bull; CRF {{ p.crf }} ({{ p.speed_preset }}) &bull; {{ p.audio_codec | upper }} &bull; Audio: {{ p.audio_languages | join(',') | upper }} &bull; Subs: {{ p.subtitle_languages | join(',') | upper }}"
+              {% if p.id == cfg.default_preset_id %}selected{% endif %}
+            >
+              {{ "★ " if p.id == cfg.default_preset_id else "" }}{{ p.name }}{{ " (Default)" if p.id == cfg.default_preset_id else "" }}
+            </option>
+            {% endfor %}
+          </select>
+
+          <div class="row-between">
+            <form id="make-default-form" method="post" action="/api/presets/default">
+              <input type="hidden" name="preset_id" id="default-preset-input" value="{{ cfg.default_preset_id }}">
+              <button type="submit" id="make-default-btn" class="btn-primary">Make Default Preset</button>
+            </form>
+            <span id="active-default-badge" class="badge state-running" style="display:none;">★ Active Default</span>
+
+            <form id="delete-preset-form" method="post" action="/api/presets/delete" onsubmit="return confirm('Delete selected custom preset?')" style="display:none;">
+              <input type="hidden" name="preset_id" id="delete-preset-input" value="">
+              <button type="submit" class="btn-danger">Delete</button>
+            </form>
+          </div>
+        </div>
+
+        <div id="preset-summary-strip" class="muted" style="background:var(--bg); padding:0.55rem 0.75rem; border-radius:6px; border:1px solid var(--border);"></div>
+      </div>
+
+      <script>
+        function updatePresetBar() {
+          const sel = document.getElementById("preset-selector");
+          if (!sel) return;
+          const opt = sel.options[sel.selectedIndex];
+          const isDefault = opt.dataset.isDefault === "true";
+          const isBuiltin = opt.dataset.builtin === "true";
+
+          document.getElementById("preset-summary-strip").innerHTML = opt.dataset.summary;
+          document.getElementById("default-preset-input").value = sel.value;
+          document.getElementById("delete-preset-input").value = sel.value;
+
+          document.getElementById("make-default-form").style.display = isDefault ? "none" : "inline";
+          document.getElementById("active-default-badge").style.display = isDefault ? "inline-block" : "none";
+          document.getElementById("delete-preset-form").style.display = isBuiltin ? "none" : "inline";
+        }
+        function toggleAllLangs(boxId, allCheckbox) {
+          const box = document.getElementById(boxId);
+          box.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            if (cb !== allCheckbox) {
+              cb.disabled = allCheckbox.checked;
+              if (allCheckbox.checked) cb.checked = false;
+            }
+          });
+        }
+        document.addEventListener("DOMContentLoaded", updatePresetBar);
+      </script>
+
+      <hr style="border-color: var(--border); margin: 1rem 0;">
+      <h4 style="margin-top:0;">Create Custom Preset</h4>
+      <form method="post" action="/api/presets/create">
+        <div class="form-grid">
+          <div><label class="label">Preset Name</label><input type="text" name="name" placeholder="e.g., Anime 1080p Slow" required></div>
+          <div><label class="label">Container</label><select name="container"><option value="mkv">MKV</option><option value="mp4">MP4</option></select></div>
+          <div><label class="label">Max Resolution</label><select name="max_height"><option value="1080">1080p</option><option value="2160">2160p (4K)</option><option value="720">720p</option><option value="original">Original</option></select></div>
+          <div><label class="label">Video Codec</label><select name="video_codec"><option value="hevc">HEVC (x265)</option><option value="av1">AV1 (SVT)</option><option value="h264">H.264 (x264)</option></select></div>
+          <div><label class="label">CRF Quality</label><input type="number" name="crf" value="22" min="14" max="35"></div>
+          <div>
+            <label class="label">Speed Preset</label>
+            <select name="speed_preset">
+              <option value="fast" selected>Fast (Balanced Default)</option>
+              <option value="medium">Medium (Higher Efficiency)</option>
+              <option value="slow">Slow (Best Compression)</option>
+            </select>
+          </div>
+          <div><label class="label">Passthrough Max (MB)</label><input type="number" name="passthrough_max_mb" placeholder="Optional"></div>
+        </div>
+
+        <div class="grid-2" style="margin-bottom:0.75rem;">
+          <div>
+            <label class="label">Audio Languages (Select one or more)</label>
+            <div class="lang-box" id="audio-lang-box">
+              {% for code, label in language_choices %}
+              <label>
+                <input type="checkbox" name="audio_languages" value="{{ code }}"
+                  {% if code == 'eng' %}checked{% endif %}
+                  {% if code == 'all' %}onchange="toggleAllLangs('audio-lang-box', this)"{% endif %}>
+                {{ label }}
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div>
+            <label class="label">Subtitle Languages (Select one or more)</label>
+            <div class="lang-box" id="sub-lang-box">
+              {% for code, label in language_choices %}
+              <label>
+                <input type="checkbox" name="subtitle_languages" value="{{ code }}"
+                  {% if code == 'eng' %}checked{% endif %}
+                  {% if code == 'all' %}onchange="toggleAllLangs('sub-lang-box', this)"{% endif %}>
+                {{ label }}
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <div class="row-between">
+          <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+            <label><input type="checkbox" name="error_cleanup_remux" value="true" checked style="width:auto;"> Container Error Cleanup</label>
+            <label><input type="checkbox" name="make_default" value="true" style="width:auto;"> Make Default Preset</label>
+          </div>
+          <button type="submit" class="btn-primary">Save Custom Preset</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0;">Engine & Safety Settings</h3>
+      <form method="post" action="/api/settings" class="row-between">
+        <input type="hidden" name="theme" value="{{ cfg.theme }}">
+        <label title="Uses /dev/shm only when free_shm > (source * 1.5) + 2 GB"><input type="checkbox" name="enable_ram_scratch" value="true" {{ 'checked' if cfg.enable_ram_scratch else '' }} style="width:auto;"> Smart RAM Scratch (/dev/shm)</label>
+        <label title="Pause 0–30s between files for laptops/mini-PCs">Thermal Cooldown (sec): <input type="number" name="thermal_cooldown_sec" value="{{ cfg.thermal_cooldown_sec }}" min="0" max="30" style="width:70px;"></label>
+        <label><input type="checkbox" name="write_batch_summaries" value="true" {{ 'checked' if cfg.write_batch_summaries else '' }} style="width:auto;"> Write Batch Summary Reports</label>
+        <button type="submit">Save Settings</button>
+      </form>
+    </div>
+  </div>
+
+  <dialog id="stop-modal">
+    <h3 style="margin-top:0;">Stop or Pause Queue</h3>
+    <p class="muted">Choose how AVE should stop the active batch:</p>
+    <div style="display:flex; flex-direction:column; gap:0.5rem;">
+      <form method="post" action="/api/stop" onsubmit="document.getElementById('stop-modal').close()">
+        <input type="hidden" name="mode" value="graceful">
+        <button type="submit" class="btn-warn" style="width:100%;">Stop After Current File (Recommended)</button>
+      </form>
+      <form method="post" action="/api/stop" onsubmit="document.getElementById('stop-modal').close()">
+        <input type="hidden" name="mode" value="hard">
+        <button type="submit" class="btn-danger" style="width:100%;">Hard Stop Now (Clean .part, Keep Source)</button>
+      </form>
+      <button type="button" onclick="document.getElementById('stop-modal').close()">Cancel</button>
+    </div>
+  </dialog>
+</body>
+</html>
