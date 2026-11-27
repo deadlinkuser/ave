@@ -104,7 +104,7 @@ case "$ACTION" in
         DATA_DIR="${DATA_DIR/#\~/$HOME}"
         mkdir -p "$DATA_DIR"/{watch,output,config}
 
-        read -r -p "Web GUI port: " INPUT_PORT
+        read -r -p "Web GUI port [$WEB_PORT]: " INPUT_PORT
         WEB_PORT="${INPUT_PORT:-8488}"
 
         read -r -p "Allow access from other devices on your LAN? (y/N): " ALLOW_LAN
@@ -140,6 +140,7 @@ case "$ACTION" in
         "$RUNTIME" rm ave >/dev/null 2>&1 || true
 
         if [[ "$RUNTIME" == "podman" && "$(uname -s)" == "Linux" ]]; then
+            read -r -p "Start AVE automatically on system boot? (Y/n): " AUTO_BOOT
             mkdir -p "$(dirname "$QUADLET_FILE")"
             {
                 echo "[Unit]"
@@ -167,21 +168,20 @@ case "$ACTION" in
                 echo "[Service]"
                 echo "Restart=always"
                 echo "TimeoutStartSec=120"
-                echo ""
-                echo "[Install]"
-                echo "WantedBy=default.target"
+                if [[ "${AUTO_BOOT,,}" != "n" && "${AUTO_BOOT,,}" != "no" ]]; then
+                    echo ""
+                    echo "[Install]"
+                    echo "WantedBy=default.target"
+                fi
             } > "$QUADLET_FILE"
 
             systemctl --user daemon-reload
-            read -r -p "Start AVE automatically on system boot? (Y/n): " AUTO_BOOT
+            systemctl --user restart ave.service
             if [[ "${AUTO_BOOT,,}" != "n" && "${AUTO_BOOT,,}" != "no" ]]; then
-                systemctl --user enable --now ave.service
                 loginctl enable-linger "$USER" 2>/dev/null || true
-                echo "[AVE] Enabled and started ave.service on boot."
+                echo "[AVE] Enabled and started ave.service (auto-starts on boot)."
             else
-                systemctl --user disable ave.service 2>/dev/null || true
-                systemctl --user start ave.service
-                echo "[AVE] Started ave.service (manual start on boot)."
+                echo "[AVE] Started ave.service (manual start only; will not auto-start on boot)."
             fi
         else
             RUN_ARGS=(-d --name ave --restart unless-stopped -p "$BIND_IP:$WEB_PORT:8488" -v "$DATA_DIR:/data" --shm-size="$SHM_GB")
