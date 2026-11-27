@@ -6,6 +6,7 @@ import json
 import os
 import shutil
 import signal
+import select
 import subprocess
 import time
 from dataclasses import asdict
@@ -107,18 +108,47 @@ class EncodeRunner:
             self.finalize_job(plan, passed=False, error_reason=f"Failed to launch ffmpeg: {exc}")
             return False
 
-        # [NOTE] Parse ffmpeg -progress key=value stream line by line until exit.
+        # [NOTE] Non-blocking progress loop with 5-minute anti-stall watchdog so corrupt streams never hang forever.
         assert self._active_proc.stdout is not None
-        for raw_line in self._active_proc.stdout:
-            line = raw_line.strip()
+        last_progress_mono = time.monotonic()
+        last_out_time_us = -1
+        stalled_reason = ""
+        STALL_TIMEOUT_SEC = 300.0
+
+        while True:
+            ready, _, _ = select.select([self._active_proc.stdout], [], [], 2.0)
             now = time.monotonic()
             elapsed_this_file = int(now - file_start_mono)
             self.status.file_elapsed_sec = elapsed_this_file
             self.status.batch_encode_sec = batch_sec_before_file + elapsed_this_file
 
-            if "=" in line:
-                key, val = line.split("=", 1)
-                self._apply_progress_metric(key, val, plan.media.duration_sec)
+            if ready:
+                raw_line = self._active_proc.stdout.readline()
+                if not raw_line:
+                    break
+                line = raw_line.strip()
+                if "=" in line:
+                    key, val = line.split("=", 1)
+                    if key == "out_time_us":
+                        try:
+                            cur_us = int(val)
+                            if cur_us > last_out_time_us:
+                                last_out_time_us = cur_us
+                                last_progress_mono = now
+                        except ValueError:
+                            pass
+                    elif key == "progress" and val == "end":
+                        last_progress_mono = now
+                    self._apply_progress_metric(key, val, plan.media.duration_sec)
+
+            # [NOTE] Kill hung ffmpeg if no frame/time progress occurs for 5 minutes.
+            if now - last_progress_mono >= STALL_TIMEOUT_SEC and self._active_proc.poll() is None:
+                stalled_reason = f"FFmpeg stalled with no progress for {int(STALL_TIMEOUT_SEC)}s (corrupt stream/demuxer deadlock)"
+                try:
+                    self._active_proc.kill()
+                except Exception:
+                    pass
+                break
 
             # [NOTE] Periodically adjust CPU/IO niceness if external host load spikes.
             if now - last_courtesy_check >= 4.0 and self._active_proc.poll() is None:
@@ -155,9 +185,9 @@ class EncodeRunner:
             self.status.banner_message = f"VAAPI fallback to CPU for {plan.media.relative_path.name}"
             return self.execute_plan(plan, force_cpu=True)
 
-        if returncode != 0:
+        if returncode != 0 or stalled_reason:
             self._cleanup_part_file(plan.temp_part_path)
-            reason = " | ".join(stderr_tail) if stderr_tail else f"ffmpeg exited with code {returncode}"
+            reason = stalled_reason or (" | ".join(stderr_tail) if stderr_tail else f"ffmpeg exited with code {returncode}")
             self.finalize_job(plan, passed=False, error_reason=reason)
             return False
 
