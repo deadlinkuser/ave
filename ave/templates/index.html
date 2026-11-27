@@ -86,6 +86,7 @@
         <input type="hidden" name="theme" value="{{ 'light' if cfg.theme == 'dark' else 'dark' }}">
         <button type="submit">{{ 'Light Mode' if cfg.theme == 'dark' else 'Dark Mode' }}</button>
       </form>
+      <div style="display:flex; gap:0.5rem; align-items:center;"><a id="open-avf-btn" href="http://127.0.0.1:8489" target="_blank" style="background:#334155; color:#e2e8f0; padding:0.45rem 0.85rem; border-radius:6px; text-decoration:none; font-size:0.85rem; font-weight:600;">Open AVF &#8599;</a></div>
     </header>
 
     {% include "partials/live.html" %}
@@ -256,5 +257,6 @@ p2 = """    <div class="card">
       <button type="button" onclick="document.getElementById('stop-modal').close()">Cancel</button>
     </div>
   </dialog>
+  <script>const avfBtn = document.getElementById("open-avf-btn"); if (avfBtn) avfBtn.href = `${window.location.protocol}//${window.location.hostname}:8489`;</script>
 </body>
 </html>

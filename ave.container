@@ -11,7 +11,7 @@ Volume=%h/containers/ave:/data:Z
 ShmSize=8g
 
 [Service]
-Restart=always
+Restart=on-failure
 TimeoutStartSec=120
 MemoryHigh=75%
 MemoryMax=85%

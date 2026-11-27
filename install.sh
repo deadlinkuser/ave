@@ -165,7 +165,7 @@ case "$ACTION" in
                 fi
                 echo ""
                 echo "[Service]"
-                echo "Restart=always"
+                echo "Restart=on-failure"
                 echo "TimeoutStartSec=120"
                 echo "MemoryHigh=75%"
                 echo "MemoryMax=85%"
