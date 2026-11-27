@@ -9,12 +9,12 @@ AutoUpdate=registry
 PublishPort=127.0.0.1:8488:8488
 Volume=%h/containers/ave:/data:Z
 ShmSize=8g
-MemoryHigh=75%
-MemoryMax=85%
 
 [Service]
 Restart=always
 TimeoutStartSec=120
+MemoryHigh=75%
+MemoryMax=85%
 
 [Install]
 WantedBy=default.target

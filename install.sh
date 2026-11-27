@@ -155,8 +155,6 @@ case "$ACTION" in
                 echo "PublishPort=$BIND_IP:$WEB_PORT:8488"
                 echo "Volume=$DATA_DIR:/data:Z"
                 echo "ShmSize=$SHM_GB"
-                echo "MemoryHigh=75%"
-                echo "MemoryMax=85%"
                 if [[ -n "$WEB_PASS" ]]; then
                     echo "Environment=AVE_WEB_USER=$WEB_USER"
                     echo "Environment=AVE_WEB_PASSWORD=$WEB_PASS"
@@ -169,6 +167,8 @@ case "$ACTION" in
                 echo "[Service]"
                 echo "Restart=always"
                 echo "TimeoutStartSec=120"
+                echo "MemoryHigh=75%"
+                echo "MemoryMax=85%"
                 if [[ "${AUTO_BOOT,,}" != "n" && "${AUTO_BOOT,,}" != "no" ]]; then
                     echo ""
                     echo "[Install]"
