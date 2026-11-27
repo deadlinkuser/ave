@@ -104,6 +104,7 @@ case "$ACTION" in
         DATA_DIR="${DATA_DIR/#\~/$HOME}"
         mkdir -p "$DATA_DIR"/{watch,output,config}
 
+        WEB_PORT="8488"
         read -r -p "Web GUI port [$WEB_PORT]: " INPUT_PORT
         WEB_PORT="${INPUT_PORT:-8488}"
 
