@@ -5,12 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AVE — Automatic Video Encoder</title>
   <script>
+    let _lastLiveHtml = "";
     setInterval(async () => {
       try {
         const res = await fetch("/partials/live");
-        if (res.ok) {
-          const panel = document.getElementById("live-panel");
-          if (panel) panel.outerHTML = await res.text();
+        if (!res.ok) return;
+        const html = await res.text();
+        if (html === _lastLiveHtml) return;
+        _lastLiveHtml = html;
+
+        const panel = document.getElementById("live-panel");
+        if (!panel) return;
+
+        // Save scroll positions of Pending Queue and Quarantined boxes before updating
+        const scrollPositions = Array.from(panel.querySelectorAll(".scroll-box")).map(el => el.scrollTop);
+        panel.outerHTML = html;
+
+        // Restore scroll positions immediately so scrollbars never jump or flash
+        const newPanel = document.getElementById("live-panel");
+        if (newPanel) {
+          newPanel.querySelectorAll(".scroll-box").forEach((el, idx) => {
+            if (scrollPositions[idx] !== undefined) el.scrollTop = scrollPositions[idx];
+          });
         }
       } catch (e) {}
     }, 1000);
