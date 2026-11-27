@@ -132,6 +132,7 @@ def _dashboard_context(request: Request) -> dict[str, object]:
         "pending_files": pending_files,
         "failed_reports": failed_reports,
         "reclaimable_gb": f"{reclaimable_gb:.2f}",
+        "hw_accel_available": Path("/dev/dri/renderD128").exists(),
     }
 
 
@@ -184,6 +185,7 @@ def api_create_preset(
     subtitle_languages: list[str] = Form(default=["eng"]),
     passthrough_max_mb: str = Form(""),
     error_cleanup_remux: bool = Form(False),
+    use_hw_accel: bool = Form(False),
     make_default: bool = Form(False),
 ) -> RedirectResponse:
     height_val = None if max_height == "original" else int(max_height)
@@ -206,6 +208,7 @@ def api_create_preset(
         subtitle_languages=final_subs,
         passthrough_max_mb=pt_val,
         error_cleanup_remux=error_cleanup_remux,
+        use_hw_accel=use_hw_accel,
     )
     saved = worker.preset_mgr.save_custom_preset(new_preset)
     if make_default:

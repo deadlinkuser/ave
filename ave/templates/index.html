@@ -111,7 +111,7 @@ p2 = """    <div class="card">
               value="{{ p.id }}"
               data-builtin="{{ 'true' if p.is_builtin else 'false' }}"
               data-is-default="{{ 'true' if p.id == cfg.default_preset_id else 'false' }}"
-              data-summary="{{ p.container | upper }} &bull; {{ p.max_height ~ 'p' if p.max_height else 'Original' }} &bull; {{ p.video_codec | upper }} {{ p.bit_depth }}-bit &bull; CRF {{ p.crf }} ({{ p.speed_preset }}) &bull; {{ p.audio_codec | upper }} &bull; Audio: {{ p.audio_languages | join(',') | upper }} &bull; Subs: {{ p.subtitle_languages | join(',') | upper }}"
+              data-summary="{{ p.container | upper }} &bull; {{ p.max_height ~ 'p' if p.max_height else 'Original' }} &bull; {{ p.video_codec | upper }} {{ p.bit_depth }}-bit{{ ' (VAAPI GPU)' if p.use_hw_accel else ' (CPU)' }} &bull; CRF {{ p.crf }} ({{ p.speed_preset }}) &bull; {{ p.audio_codec | upper }} &bull; Audio: {{ p.audio_languages | join(',') | upper }} &bull; Subs: {{ p.subtitle_languages | join(',') | upper }}"
               {% if p.id == cfg.default_preset_id %}selected{% endif %}
             >
               {{ "★ " if p.id == cfg.default_preset_id else "" }}{{ p.name }}{{ " (Default)" if p.id == cfg.default_preset_id else "" }}
@@ -217,6 +217,11 @@ p2 = """    <div class="card">
         <div class="row-between">
           <div style="display:flex; gap:1rem; flex-wrap:wrap;">
             <label><input type="checkbox" name="error_cleanup_remux" value="true" checked style="width:auto;"> Container Error Cleanup</label>
+            <label title="Intel 8th-Gen+ recommended for 10-bit HEVC; AMD quality varies; auto-falls back to CPU if unsupported">
+              <input type="checkbox" name="use_hw_accel" value="true" style="width:auto;">
+              Use Hardware Accel (VAAPI — Intel 8th-Gen+ rec.)
+              {% if hw_accel_available %}<span class="badge state-running">GPU Ready</span>{% else %}<span class="badge">CPU Fallback</span>{% endif %}
+            </label>
             <label><input type="checkbox" name="make_default" value="true" style="width:auto;"> Make Default Preset</label>
           </div>
           <button type="submit" class="btn-primary">Save Custom Preset</button>

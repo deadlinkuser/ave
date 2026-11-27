@@ -38,7 +38,8 @@ class Preset:
     audio_languages: list[str] = field(default_factory=lambda: ["eng"])
     subtitle_languages: list[str] = field(default_factory=lambda: ["eng"])
     passthrough_max_mb: Optional[int] = None  # Skip re-encode if codec matches & size <= threshold
-    error_cleanup_remux: bool = True          # Default ON per v1.0 spec
+    error_cleanup_remux: bool = True
+    use_hw_accel: bool = False          # Default ON per v1.0 spec
 
 
 @dataclass

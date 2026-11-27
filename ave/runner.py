@@ -67,7 +67,7 @@ class EncodeRunner:
                 self.status.state = EngineState.PAUSING
         self._save_status()
 
-    def execute_plan(self, plan: EncodePlan) -> bool:
+    def execute_plan(self, plan: EncodePlan, force_cpu: bool = False) -> bool:
         # [NOTE] Runs ffmpeg subprocess, parses -progress pipe:1 into status.json, and handles graceful/hard stops.
         plan.temp_part_path.parent.mkdir(parents=True, exist_ok=True)
         plan.output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -87,7 +87,7 @@ class EncodeRunner:
         if plan.action == JobAction.PASSTHROUGH:
             return self._run_direct_copy(plan)
 
-        cmd = self.builder.build_command(plan)
+        cmd = self.builder.build_command(plan, force_cpu=force_cpu)
         file_start_mono = time.monotonic()
         batch_sec_before_file = self.status.batch_encode_sec
         last_courtesy_check = 0.0
@@ -149,6 +149,11 @@ class EncodeRunner:
         if returncode != 0 and plan.action == JobAction.REMUX_CLEAN:
             self._cleanup_part_file(plan.temp_part_path)
             return self._run_direct_copy(plan)
+
+        if returncode != 0 and not force_cpu and plan.preset.use_hw_accel and self.builder.vaapi_available():
+            self._cleanup_part_file(plan.temp_part_path)
+            self.status.banner_message = f"VAAPI fallback to CPU for {plan.media.relative_path.name}"
+            return self.execute_plan(plan, force_cpu=True)
 
         if returncode != 0:
             self._cleanup_part_file(plan.temp_part_path)
@@ -271,24 +276,20 @@ class EncodeRunner:
             self.status.file_eta_sec = 0
 
     def _adjust_system_courtesy(self, pid: int) -> None:
-        # [NOTE] Monitors host CPU/IO load and applies renice/ionice yielding when external workloads spike.
+        # [NOTE] Yields CPU/IO only when external host load spikes above AVE's own threads, and restores cleanly.
         try:
             load_1m, _, _ = os.getloadavg()
             cores = os.cpu_count() or 4
-            # [NOTE] Yield if 1-minute load average exceeds 85% of available CPU threads.
-            overloaded = load_1m > (cores * 0.85)
+            # [NOTE] Threshold > 1.15x cores avoids self-throttling from ffmpeg's own runnable threads.
+            overloaded = load_1m > (cores * 1.15)
             self.status.system_throttled = overloaded
 
             target_nice = 15 if overloaded else 5
             os.setpriority(os.PRIO_PROCESS, pid, target_nice)
 
             if shutil.which("ionice"):
-                io_class = "3" if overloaded else "2"
-                subprocess.run(
-                    ["ionice", "-c", io_class, "-p", str(pid)],
-                    capture_output=True,
-                    check=False,
-                )
+                io_cmd = ["ionice", "-c", "3", "-p", str(pid)] if overloaded else ["ionice", "-c", "2", "-n", "4", "-p", str(pid)]
+                subprocess.run(io_cmd, capture_output=True, check=False)
         except OSError:
             pass
 

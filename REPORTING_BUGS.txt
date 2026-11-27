@@ -1,0 +1,34 @@
+AVE — How to Report Bugs & Gather Logs
+===============================================================================
+
+Thank you for testing AVE! If you run into a stuck file, Web GUI issue, or
+unexpected error, please share a quick report so we can fix it.
+
+1. CHECK FILE-SPECIFIC QUARANTINE REPORTS FIRST
+   If a specific video failed to encode, AVE moves it to:
+     ~/containers/ave/watch/_failed/
+   Look for the matching `.error.txt` file next to the video—it explains why
+   ffprobe or ffmpeg rejected that file.
+
+2. EXPORT CONTAINER LOGS
+   Run this command in your terminal to save the recent AVE container logs to
+   your backup folder:
+
+     mkdir -p ~/backups/ave
+     podman logs --tail 200 ave > ~/backups/ave/ave-bug-report.txt 2>&1
+
+   (If using Docker, replace `podman` with `docker`.)
+
+   Check `ave-bug-report.txt` for lines containing `ERROR`, `Traceback`, or
+   `ffmpeg exited with code`.
+
+3. SUBMIT AN ISSUE ON GITHUB
+   - If a file appears under "Quarantined (_failed)" in the Web GUI, click the
+     "Report Issue" link next to it to open a pre-filled GitHub issue.
+   - Or open an issue directly at:
+     https://github.com
+
+   Please include:
+   - Your OS and CPU/GPU model (e.g., Debian 13, Intel i5-6500 or Intel N150)
+   - Whether Hardware Acceleration (VAAPI) was enabled
+   - The relevant lines from `~/backups/ave/ave-bug-report.txt`
